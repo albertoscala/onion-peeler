@@ -1,2 +1,2 @@
-# onion-peeler
-Onion-Peeler is a powerful web-crawler designed specifically for navigating the depths of the Tor network, commonly known as the darkweb. This project aims to provide users with an efficient and versatile tool to explore hidden websites and gather information from this anonymized part of the internet.
+# Onion Peeler
+Onion-Peeler is a simple web-crawler designed specifically for understanding the web crawling and navigating the depths of the Tor network, commonly known as the darkweb, in an easier way. This project aims to map and explore hidden websites in this anonymized part of the internet.
