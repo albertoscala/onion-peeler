@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import json
 from progress.bar import Bar
-from torrequest import TorRequest
 
 def readSeeds(seedsPath: str):
     seeds = open(seedsPath).readlines()
@@ -10,10 +9,6 @@ def readSeeds(seedsPath: str):
 
 def getPage(url: str, session):
     return session.get(url)
-
-def getTorPage(url: str):
-    with TorRequest() as tr:
-        print(tr.get(url).text)
 
 def findLinks(page: requests.Response):
     return [str(tag['href']) for tag in BeautifulSoup(page.content, 'html.parser').find_all('a', href=True)]
@@ -43,14 +38,18 @@ def bfsWebCrawling(seedsPath, session):
                 "children": []
                 }
             
-            page = getPage(seed, session)
-            links = findLinks(page)
-            complete_links(links, seed)
-            target['children'] = links
-            
-            tree.write(json.dumps(target, indent=4) + ',')
-            
-            queue.extend(links)
+            try:
+                page = getPage(seed, session)
+                links = findLinks(page)
+                complete_links(links, seed)
+                target['children'] = links
+                
+                tree.write(json.dumps(target, indent=4) + ',')
+                
+                queue.extend(links)
+            except:
+                continue
+
             bar.next()
 
         tree.write(']')
@@ -58,4 +57,12 @@ def bfsWebCrawling(seedsPath, session):
 
 
 if __name__ == '__main__':
-    getTorPage('http://http://tor66sewebgixwhcqfnp5inzp5x5uohhdy3kvtnyfxc2e5mxiuh34iid.onion/')
+    session = requests.session()
+    session.proxies = {
+        'http':  'socks5h://127.0.0.1:9050',
+        'https': 'socks5h://127.0.0.1:9050'
+    }
+    headers = {}
+    headers['User-agent'] = 'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0'
+    session.headers = headers
+    bfsWebCrawling('seeds.txt', session)
