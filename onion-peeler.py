@@ -8,7 +8,10 @@ def readSeeds(seedsPath: str):
     return [seed.strip() for seed in seeds]
 
 def getPage(url: str, session):
-    return session.get(url)
+    page = session.get(url)
+    if page is None:
+        raise Exception("Page not retrieved")
+    return page
 
 def findLinks(page: requests.Response):
     return [str(tag['href']) for tag in BeautifulSoup(page.content, 'html.parser').find_all('a', href=True)]
@@ -21,8 +24,6 @@ def complete_links(links, baseUrl):
 def bfsWebCrawling(seedsPath, session):
 
     with open('tree.json', 'a+') as tree:
-    
-        tree.write('[')
 
         # Loads seeds in queue
         queue = readSeeds(seedsPath)
@@ -30,8 +31,13 @@ def bfsWebCrawling(seedsPath, session):
         # Create progress bar
         bar = Bar('Processing', max=200, suffix='%(percent)d%%\n')
 
+        tree.write('[')
+
         for i in range(250):
-            seed = queue.pop(0)
+            if queue:
+                seed = queue.pop(0)
+            else:
+                break
 
             target = {
                 "parent": seed, 
@@ -47,7 +53,8 @@ def bfsWebCrawling(seedsPath, session):
                 tree.write(json.dumps(target, indent=4) + ',')
                 
                 queue.extend(links)
-            except:
+            except Exception as e:
+                print(e)
                 continue
 
             bar.next()
