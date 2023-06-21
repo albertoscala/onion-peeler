@@ -1,11 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-from progress.bar import Bar
+import os
 
 def readSeeds(seedsPath: str):
     seeds = open(seedsPath).readlines()
-    return [seed.strip() for seed in seeds]
+    return [seed.strip() for seed in seeds if seed.strip() != '']
 
 def getPage(url: str, session):
     page = session.get(url)
@@ -16,53 +16,60 @@ def getPage(url: str, session):
 def findLinks(page: requests.Response):
     return [str(tag['href']) for tag in BeautifulSoup(page.content, 'html.parser').find_all('a', href=True)]
 
-def complete_links(links, baseUrl):
-    for i in range(len(links)):
-        if not links[i].startswith('http'):
-            links[i] = baseUrl[:len(baseUrl)-1] + links[i]
+def clean_links(links):
+    return [link for link in links if link.startswith('http')]
 
 def bfsWebCrawling(seedsPath, session):
 
     with open('tree.json', 'a+') as tree:
 
-        # Loads seeds in queue
-        queue = readSeeds(seedsPath)
+        if os.path.isfile('saved_queue.txt'):
+            queue = readSeeds('saved_queue.txt')
+        else:
+            queue = readSeeds(seedsPath)
 
-        # Create progress bar
-        bar = Bar('Processing', max=200, suffix='%(percent)d%%\n')
+        count = 0
 
         tree.write('[')
 
-        for i in range(250):
-            if queue:
+        while queue:
+            try:
                 seed = queue.pop(0)
-            else:
+
+                target = {
+                    "parent": seed, 
+                    "children": []
+                    }
+                
+                try:
+                    page = getPage(seed, session)
+                    links = findLinks(page)
+                    links = clean_links(links)
+                    target['children'] = links
+
+                    print('Writing')                    
+                    tree.write(json.dumps(target, indent=4) + ',')
+                    print('Done writing')
+
+                    count+=1
+                    print('Page' + str(count))
+
+                    queue.extend(links)
+
+                except Exception as e:
+                    print(e)
+                    continue
+
+            except KeyboardInterrupt:
+                tree.write(']')
+                savedQueue = open('saved_queue.txt', 'w+')
+                savedQueue.write(seed + '\n')
+                for link in queue:
+                    savedQueue.write(link + '\n')
+                savedQueue.close()
                 break
 
-            target = {
-                "parent": seed, 
-                "children": []
-                }
             
-            try:
-                page = getPage(seed, session)
-                links = findLinks(page)
-                complete_links(links, seed)
-                target['children'] = links
-                
-                tree.write(json.dumps(target, indent=4) + ',')
-                
-                queue.extend(links)
-            except Exception as e:
-                print(e)
-                continue
-
-            bar.next()
-
-        tree.write(']')
-        bar.finish()
-
-
 if __name__ == '__main__':
     session = requests.session()
     session.proxies = {
